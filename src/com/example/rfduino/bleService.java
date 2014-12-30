@@ -41,7 +41,7 @@ public class bleService  extends Service{
 	 private BluetoothAdapter mBluetoothAdapter;
 	 private String mBluetoothDeviceAddress;
 	 private static BluetoothGatt mBluetoothGatt;
-	private BluetoothGatt mConnectedGatt;
+	 private BluetoothGatt mConnectedGatt;
 	 private static BluetoothGattService mBluetoothGattService;
 	 
 	 private static final long SCAN_PERIOD = 2500;  // Used to scan for devices for only 10 secs
@@ -68,6 +68,9 @@ public class bleService  extends Service{
 	 
 	 private final String rfDuino_MAC = "DD:FF:4E:66:1A:D4";
 	 
+	 
+	 private static float floatValue0,floatValue1,floatValue2,floatValue3,floatValue4;
+	 private static float lastValue0;
 	 //***********************************************
 	 // SERVICE FUNCTIONS
 	 //***********************************************
@@ -110,7 +113,7 @@ public class bleService  extends Service{
 	  public int onStartCommand(Intent intent, int flags, int startId) {
 		initialize();
 		rfDuinoState = mDeviceState.DISCONNECTED;
-		
+		lastValue0 = 0.0f;
 		MyThread myThread = new MyThread(); // creating a new thread?
 		myThread.start();
 		return  super.onStartCommand(intent, flags, startId);
@@ -239,10 +242,17 @@ public class bleService  extends Service{
 						h.postDelayed(new Runnable(){
 							@Override
 							public void run(){
-								send(new byte[] {(byte)0x00});
+								send(new byte[] {(byte)0x55});
 							}
 						}, 250);
 		                
+						h.postDelayed(new Runnable(){
+								@Override
+								public void run(){
+									send(new byte[] {(byte)0xFF});
+								}
+							}, 250);
+						
 		            } else {
 		                Log.w(TAG, "onServicesDiscovered received: " + status);
 		            }
@@ -267,25 +277,31 @@ public class bleService  extends Service{
 			        	  
 			        	  asInt = (rawValue[0] & 0xFF) | ((rawValue[1] & 0xFF) << 8) 
 			        			  | ((rawValue[2] & 0xFF) << 16) | ((rawValue[3] & 0xFF) << 24);
-			        	  float floatValue0 =  Float.intBitsToFloat(asInt);
+			        	  floatValue0 =  Float.intBitsToFloat(asInt);
 			        	  
 			        	  asInt = (rawValue[4] & 0xFF) | ((rawValue[5] & 0xFF) << 8) 
 			        			  | ((rawValue[6] & 0xFF) << 16) | ((rawValue[7] & 0xFF) << 24);
-			        	  float floatValue1 =  Float.intBitsToFloat(asInt);
+			        	  floatValue1 =  Float.intBitsToFloat(asInt);
 			        	  
 			        	  asInt = (rawValue[8] & 0xFF) | ((rawValue[9] & 0xFF) << 8) 
 			        			  | ((rawValue[10] & 0xFF) << 16) | ((rawValue[11] & 0xFF) << 24);
-			        	  float floatValue2 =  Float.intBitsToFloat(asInt);
+			        	  floatValue2 =  Float.intBitsToFloat(asInt);
 			        	  
 			        	  asInt = (rawValue[12] & 0xFF) | ((rawValue[13] & 0xFF) << 8) 
 			        			  | ((rawValue[14] & 0xFF) << 16) | ((rawValue[15] & 0xFF) << 24);
-			        	  float floatValue3 =  Float.intBitsToFloat(asInt);
+			        	  floatValue3 =  Float.intBitsToFloat(asInt);
 			        	  
 			        	  asInt = (rawValue[16] & 0xFF) | ((rawValue[17] & 0xFF) << 8) 
 			        			  | ((rawValue[18] & 0xFF) << 16) | ((rawValue[19] & 0xFF) << 24);
-			        	  float floatValue4 =  Float.intBitsToFloat(asInt);
+			        	  floatValue4 =  Float.intBitsToFloat(asInt);
 			        	  
-			        	  
+			        	  Handler h = new Handler(Looper.getMainLooper());
+							h.post(new Runnable(){
+								@Override
+								public void run(){
+									send(new byte[] {(byte)0x55});
+								}
+							});
 			        	  
 			        	  //float floatValue1 = c.getFloatValue(FORMAT_SINT8, 1);
 			        	  
@@ -315,7 +331,24 @@ public class bleService  extends Service{
 			        			 + "," +String.valueOf(floatValue2)+ "," +String.valueOf(floatValue3)+ 
 			        			 "," +String.valueOf(floatValue4));
 			      		//Log.e(TAG, String.valueOf(rawValue.length));
-			        	  
+			        	if(floatValue0 != lastValue0){
+			        		lastValue0 = floatValue0;
+			        	Handler hECG = new Handler(Looper.getMainLooper());
+			     		hECG.post(new Runnable(){
+			     			@Override
+			     			public void run(){
+			     				Intent i = new Intent("ECG_EVENT");
+			     			
+			     				i.putExtra("ECGData0", floatValue0);
+			     				i.putExtra("ECGData1", floatValue1);
+			     				i.putExtra("ECGData2", floatValue2);
+			     				i.putExtra("ECGData3", floatValue3);
+			     				i.putExtra("ECGData4", floatValue4);
+			     				
+			     				sendBroadcast(i);
+			     			}
+			     		});
+			        	} 
 			        }
 			}; //End of mGattCallback
 			
