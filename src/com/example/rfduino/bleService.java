@@ -7,7 +7,7 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Locale;
 import java.util.UUID;
-
+import java.util.concurrent.LinkedBlockingQueue;
 
 import android.app.Service;
 import android.bluetooth.BluetoothAdapter;
@@ -71,6 +71,8 @@ public class bleService  extends Service{
 	 
 	 private static float floatValue0,floatValue1,floatValue2,floatValue3,floatValue4;
 	 private static float lastValue0;
+	 
+	 static LinkedBlockingQueue<Float>  bluetoothQueueForUI = new LinkedBlockingQueue<Float>();
 	 //***********************************************
 	 // SERVICE FUNCTIONS
 	 //***********************************************
@@ -253,6 +255,8 @@ public class bleService  extends Service{
 								}
 							}, 250);
 						
+						handler.postDelayed(runnablePlot, 100);
+						
 		            } else {
 		                Log.w(TAG, "onServicesDiscovered received: " + status);
 		            }
@@ -302,10 +306,14 @@ public class bleService  extends Service{
 									send(new byte[] {(byte)0x55});
 								}
 							});
-			        	  
-			        	  //float floatValue1 = c.getFloatValue(FORMAT_SINT8, 1);
-			        	  
-			        	  
+							
+			        	 //Place data onto FIFO 
+						 bluetoothQueueForUI.offer(floatValue0);
+						 bluetoothQueueForUI.offer(floatValue1);
+						 bluetoothQueueForUI.offer(floatValue2);
+						 bluetoothQueueForUI.offer(floatValue3);
+						 bluetoothQueueForUI.offer(floatValue4);
+						 
 			        	 /* String strValue;
 						try {
 							strValue = new String(rawValue, "UTF-8");
@@ -331,24 +339,10 @@ public class bleService  extends Service{
 			        			 + "," +String.valueOf(floatValue2)+ "," +String.valueOf(floatValue3)+ 
 			        			 "," +String.valueOf(floatValue4));
 			      		//Log.e(TAG, String.valueOf(rawValue.length));
-			        	if(floatValue0 != lastValue0){
-			        		lastValue0 = floatValue0;
-			        	Handler hECG = new Handler(Looper.getMainLooper());
-			     		hECG.post(new Runnable(){
-			     			@Override
-			     			public void run(){
-			     				Intent i = new Intent("ECG_EVENT");
-			     			
-			     				i.putExtra("ECGData0", floatValue0);
-			     				i.putExtra("ECGData1", floatValue1);
-			     				i.putExtra("ECGData2", floatValue2);
-			     				i.putExtra("ECGData3", floatValue3);
-			     				i.putExtra("ECGData4", floatValue4);
-			     				
-			     				sendBroadcast(i);
-			     			}
-			     		});
-			        	} 
+			        	
+			          lastValue0 = floatValue0;
+
+			        	
 			        }
 			}; //End of mGattCallback
 			
@@ -407,5 +401,27 @@ public class bleService  extends Service{
 
 		        return true;
 	    }
+	  
+	  
+	  private Runnable runnablePlot = new Runnable() {
+		   @Override
+		   public void run() {
+			  
+		
+			  if(lastValue0 != 0.0f){
+				Intent i = new Intent("ECG_EVENT");
+	     			
+   				i.putExtra("ECGData0", Float.parseFloat(String.valueOf(floatValue0)));
+   				i.putExtra("ECGData1", floatValue1);
+   				i.putExtra("ECGData2", floatValue2);
+   				i.putExtra("ECGData3", floatValue3);
+   				i.putExtra("ECGData4", floatValue4);
+   				
+   				sendBroadcast(i);
+			  
+			  }
+			  handler.postDelayed(this, 100);
+			  
+		   }};
 
 }

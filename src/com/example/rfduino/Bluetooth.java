@@ -3,7 +3,17 @@ package com.example.rfduino;
 
 
 
+import java.text.SimpleDateFormat;
+import java.util.Locale;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
+
 import org.achartengine.GraphicalView;
+import org.achartengine.model.XYMultipleSeriesDataset;
+import org.achartengine.renderer.XYMultipleSeriesRenderer;
+
+import com.androidplot.xy.XYSeries;
+import com.androidplot.xy.XYSeriesRenderer;
 
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
@@ -17,6 +27,7 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Message;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 import android.view.Menu;
@@ -26,27 +37,44 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.Toast;
 
-public class Bluetooth extends Activity implements SensorEventListener {
+public class Bluetooth extends Activity {
 	private final static String TAG = "BLUETOOTH";
 	
 	private BluetoothAdapter myBluetoothAdapter;
+	private rfDuinoClass rfDuino;
+	private static Context context;
 	
 	Button blueon, blueoff, bluecancel, bluesearch, sayHello, sayBye, stopBut, startBut;
 	private Handler handler = new Handler();
 	
 	
 	//Line variables
-	private SensorManager sensorManager;
-	private Sensor accelerometer;
+	private XYSeries xySeries;
+	private XYMultipleSeriesDataset dataset;
+	private XYMultipleSeriesRenderer renderer;
+	private XYSeriesRenderer rendererSeries;
+	private GraphicalView view;
+	
 	private boolean start = false;
 	private boolean firstTime = true;
 	private int index, time;
-	private static GraphicalView view;
+	
+	private int pointsToDisplay = 75;
+	private int yMax = 15;
+	private int yMin = 0;
+	private int xScrollAhead = 35;
+	
 	private ECGLine line = new ECGLine();
-	private static Context context;
+	private final int chartDelay = 20; // millisecond delay for count
+	public LinkedBlockingQueue<Float> queue = bleService.bluetoothQueueForUI;
+	private float samplingRate = 0.003f; // TODO: Edit this
+	private float currentX;
+	private ChartThread chartThread;
+	
 	
 	public double[] data = { 0.000000, 0.099833, 0.198669, 0.295520, 0.389418, 0.479426, 0.564642, 0.644218, 0.717356, 0.783327, 0.841471, 0.891207, 0.932039, 0.963558, 0.985450, 0.997495, 0.999574, 0.991665, 0.973848, 0.946300, 0.909297, 0.863209, 0.808496, 0.745705, 0.675463, 0.598472, 0.515501, 0.427380, 0.334988, 0.239249, 0.141120, 0.041581, -0.058374, -0.157746, -0.255541, -0.350783, -0.442520, -0.529836, -0.611858, -0.687766, -0.756802, -0.818277, -0.871576, -0.916166, -0.951602, -0.977530, -0.993691, -0.999923, -0.996165, -0.982453, -0.958924, -0.925815, -0.883455, -0.832267, -0.772764, -0.705540, -0.631267, -0.550686, -0.464602, -0.373877, -0.279415, -0.182163, -0.083089, 0.016814, 0.116549, 0.215120, 0.311541, 0.404850, 0.494113, 0.578440, 0.656987, 0.728969, 0.793668, 0.850437, 0.898708, 0.938000, 0.967920, 0.988168, 0.998543, 0.998941, 0.989358, 0.969890, 0.940731, 0.902172, 0.854599, 0.798487, 0.734397, 0.662969, 0.584917, 0.501021, 0.412118, 0.319098, 0.222890, 0.124454, 0.024775, -0.075151, -0.174327, -0.271761, -0.366479, -0.457536, -0.544021, -0.625071, -0.699875, -0.767686, -0.827826, -0.879696, -0.922775, -0.956635, -0.980936, -0.995436, -0.999990, -0.994553, -0.979178, -0.954019, -0.919329, -0.875452, -0.822829, -0.761984, -0.693525, -0.618137, -0.536573, -0.449647, -0.358229, -0.263232, -0.165604, -0.066322};
 	
+	private SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss.SSS", Locale.CANADA);
 	
 	
 	@Override
@@ -54,6 +82,9 @@ public class Bluetooth extends Activity implements SensorEventListener {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_bluetooth);
 		
+		
+		context = getBaseContext();
+		rfDuino =  new rfDuinoClass(this);
 		
 		myBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 		
@@ -65,11 +96,15 @@ public class Bluetooth extends Activity implements SensorEventListener {
 		stopBut = (Button)findViewById(R.id.stop);
 		
 		line.initialize();
-		
+		currentX = 0.0f;
 		initButtons();
 		
-		IntentFilter intentFilter = new IntentFilter("ECG_EVENT");
-        registerReceiver(broadcastRx, intentFilter);
+		//IntentFilter intentFilter = new IntentFilter("ECG_EVENT");
+       // registerReceiver(broadcastRx, intentFilter);
+        
+		 ChartHandler chartUIHandler = new ChartHandler();
+		 chartThread = new ChartThread(chartUIHandler);
+		 chartThread.start();
 		
 	}
 	
@@ -77,24 +112,24 @@ public class Bluetooth extends Activity implements SensorEventListener {
 	 protected void onDestroy() {
 	  super.onDestroy();
 	  //un-register BroadcastReceiver
-	  unregisterReceiver(broadcastRx);
+	 // unregisterReceiver(broadcastRx);
 	 }
 	 
 	 
 	 @Override
 	 protected void onResume() {
 		super.onResume();
-	    IntentFilter intentFilter = new IntentFilter();
-	    intentFilter.addAction("POSTURE_ACTION");
-	    registerReceiver(broadcastRx, intentFilter);
+	   // IntentFilter intentFilter = new IntentFilter();
+	   // intentFilter.addAction("POSTURE_ACTION");
+	  //  registerReceiver(broadcastRx, intentFilter);
 	}
 		
 	@Override
 	protected void onPause() {
 		super.onPause();
 
-		LocalBroadcastManager bManager = LocalBroadcastManager.getInstance(this);   
-	    bManager.unregisterReceiver(broadcastRx);
+		//LocalBroadcastManager bManager = LocalBroadcastManager.getInstance(this);   
+	   // bManager.unregisterReceiver(broadcastRx);
 	}
 
 
@@ -141,8 +176,12 @@ public class Bluetooth extends Activity implements SensorEventListener {
 			@Override
 			public void onClick(View v) {
 				 if(myBluetoothAdapter!=null){
-		        Intent intent = new Intent(Bluetooth.this, bleService.class);
-		        startService(intent);
+					 Intent intent = new Intent(Bluetooth.this, bleService.class);
+					 startService(intent);
+					 
+					 //rfDuino.startScan();
+					 
+
 				 }
 			}     
 	    });
@@ -196,9 +235,7 @@ public class Bluetooth extends Activity implements SensorEventListener {
 		if (firstTime){
 		//line.initialize();
 		// initialize accelerometers
-		sensorManager = (SensorManager)getSystemService(SENSOR_SERVICE);
-		accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-		sensorManager.registerListener( this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL);
+	
 		
 		firstTime=false;
 		time = 0;
@@ -218,100 +255,90 @@ public class Bluetooth extends Activity implements SensorEventListener {
 		
 	}
 
-	@Override
-	public void onSensorChanged(SensorEvent event) {
-		if (start) {
-			if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER){
-				float x = event.values[0];
+
+	class ChartHandler extends Handler{
+		@Override
+		public void handleMessage(Message msg) {
+			
+			double yVal = ((double)msg.arg1)/1000;
+			
+			Log.e(TAG,String.valueOf(yVal));
+			
+        	if (firstTime){
+        		time = 0;
+        		index =0;
+        		start = true;
+        		firstTime = false;
+        	}
+			
+        	line.addPoint(time, yVal);
+        	time++;
+        	
+        	
+        	//line.rePaint();
+			//Get Graph information:
+			GraphicalView lineView = line.getView(context);
+			//Get reference to layout:
+			LinearLayout layout =(LinearLayout)findViewById(R.id.chart);
+			//clear the previous layout:
+			layout.removeAllViews();
+			//add new graph:
+			layout.addView(lineView);
+			}
+	}
+	
+	class ChartThread extends Thread{
+		public boolean continuePlot = true;
+		private Handler handler;
+		
+		
+		public ChartThread(Handler handler){
+			GraphicalView lineView = line.getView(context);
+			this.handler = handler;
+		}
+		
+		@Override
+		public void run(){
+			
+			while(continuePlot){
 				
-			// UPDATE GRAPH
-				line.addPoint(time,data[index]);
+				double yVal = 0;
 				
-				//line.addPoint(time,(double) x);
-				//Get Graph information:
-				
-				GraphicalView lineView = line.getView(this);
-				//Get reference to layout:
-				LinearLayout layout =(LinearLayout)findViewById(R.id.chart);
-				//clear the previous layout:
-				layout.removeAllViews();
-				//add new graph:
-				layout.addView(lineView);
+				try {
+					Thread.sleep(chartDelay);
+					if (queue.size() >= 1){
+					yVal = (double) queue.poll(2,TimeUnit.SECONDS);
+					currentX = currentX + samplingRate;
+					Message msg = Message.obtain();
+					msg.arg1 = (int)Math.round(yVal*1000);
+					handler.sendMessage(msg);
+					}
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+					continue;
 				}
 				
+				/*if (yVal != 0.0f){		
+				currentX = currentX + samplingRate;
 				
-				time++;
-				index++;
-				if (index == 126)
-					index = 0;
-				
-				
-				
-			
-			}
+				Message msg = Message.obtain();
+				msg.arg1 = (int)Math.round(yVal*1000);
+				handler.sendMessage(msg);	
+				}*/
+			}	
+		}
 		
-	}
-
-	@Override
-	public void onAccuracyChanged(Sensor sensor, int accuracy) {
-		// TODO Auto-generated method stub
-		
+		public void cancel(){
+			continuePlot = false;
+		}
 	}
 	
 	
-	
 
-	private BroadcastReceiver broadcastRx = new BroadcastReceiver() {
-	    @Override
-	    public void onReceive(Context context, Intent intent) {
-	        
-	        	float data0 = intent.getFloatExtra("ECGData0", 0.0f);
-	        	float data1 = intent.getFloatExtra("ECGData1", 0.0f);
-	        	float data2 = intent.getFloatExtra("ECGData2", 0.0f);
-	        	float data3 = intent.getFloatExtra("ECGData3", 0.0f);
-	        	float data4 = intent.getFloatExtra("ECGData4", 0.0f);
-	        	
-	        	Log.w(TAG,String.valueOf(data0)+ "," +String.valueOf(data1)
-	        			 + "," +String.valueOf(data2)+ "," +String.valueOf(data3)+ 
-	        			 "," +String.valueOf(data4));
-	        	
-	        	if (firstTime){
-	        		time = 0;
-	        		index =0;
-	        		start = true;
-	        		firstTime = false;
-	        	}
-	        	//for (int i = 0; i < data.length; i++){
-	        	//line.addPoint(time,data[i]);
-	        	//time++;
-	        	//}
-	        	line.addPoint(time,data0);
-	        	time++;
-	        	line.addPoint(time,data1);
-	        	time++;
-	        	line.addPoint(time,data2);
-	        	time++;
-	        	line.addPoint(time,data3);
-	        	time++;
-	        	line.addPoint(time,data4);
-	        	time++;
-				
-				//line.addPoint(time,(double) x);
-				//Get Graph information:
-				GraphicalView lineView = line.getView(context);
-				//Get reference to layout:
-				LinearLayout layout =(LinearLayout)findViewById(R.id.chart);
-				//clear the previous layout:
-				layout.removeAllViews();
-				//add new graph:
-				layout.addView(lineView);
-				
-				
-				
-				time++;
-	        	
-	 
-	        
-	    }
-	};
+	
+	
+	
+	
+	
 }
