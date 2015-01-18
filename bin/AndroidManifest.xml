@@ -22,6 +22,7 @@
         android:theme="@style/AppTheme" >
         
         <service android:name="bleService"></service>
+        <service android:name="dataSaveService"></service>
         
         <activity
             android:name=".MainActivity"

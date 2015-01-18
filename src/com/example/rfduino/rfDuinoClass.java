@@ -1,15 +1,14 @@
 package com.example.rfduino;
 
-import static android.bluetooth.BluetoothGattCharacteristic.FORMAT_SINT8;
-
-import java.io.UnsupportedEncodingException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Locale;
 import java.util.UUID;
-import java.util.concurrent.LinkedBlockingQueue;
 
-import android.app.Service;
+import org.achartengine.GraphicalView;
+
+
+import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
@@ -19,24 +18,23 @@ import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothManager;
 import android.bluetooth.BluetoothProfile;
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
-import android.os.Binder;
 import android.os.Handler;
-import android.os.IBinder;
 import android.os.Looper;
 import android.util.Log;
-import android.widget.Toast;
+import android.widget.LinearLayout;
 
 
-public class bleService  extends Service{
+public class rfDuinoClass {
+	 private ECGLine line = new ECGLine();
 	 private SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss.SSS", Locale.CANADA);
-	 private final static String TAG = bleService.class.getSimpleName();
+	 private final static String TAG = rfDuinoClass.class.getSimpleName();
 	 private final static String DEBUG = "DEBUG";
-	
+	 
+	 private final Activity parent;
 	 private Handler handler = new Handler();
+	 protected Bluetooth _context;
 	 Context context;
 	 
 	 private BluetoothManager mBluetoothManager;
@@ -71,94 +69,20 @@ public class bleService  extends Service{
 	 private final String rfDuino_MAC = "DD:FF:4E:66:1A:D4";
 	 
 	 
-	 private static float floatValue0,floatValue1,floatValue2,floatValue3,floatValue4;
-	 private static float lastValue0;
+	 public static float floatValue0,floatValue1,floatValue2,floatValue3,floatValue4;
+	 public int index;
+	 public boolean firstTime;
 	 
-	 private enum serviceState {RECORD, IDLE};
-	 private serviceState actionState;
-	 
-	 static LinkedBlockingQueue<Float>  bluetoothQueueForUI = new LinkedBlockingQueue<Float>();
-	 static LinkedBlockingQueue<Float>  bluetoothQueueForSaving = new LinkedBlockingQueue<Float>();
-	 //***********************************************
-	 // SERVICE FUNCTIONS
-	 //***********************************************
-	 @Override
-		public void onCreate(){
-			
-		}
-	 
-	@Override
-		public void onDestroy(){ // disconnects the sensortag connection after quitting service
-		unregisterReceiver(receiver);
-		
-		mBluetoothGatt.disconnect();	
-		mBluetoothAdapter.stopLeScan(mLeScanCallback);
-		Log.i(DEBUG, "Disconnected");
-		}
-	 
-	@Override
-	public IBinder onBind(Intent arg0) {
-		// TODO Auto-generated method stub
-		return mBinder;
-	}
-	
-	public class LocalBinder extends Binder {
-        bleService getService() {
-            return bleService.this;
-        }
-    }
-	
-	@Override
-    public boolean onUnbind(Intent intent) {
-        // After using a given device, you should make sure that BluetoothGatt.close() is called
-        // such that resources are cleaned up properly.  In this particular example, close() is
-        // invoked when the UI is disconnected from the Service.
-        close();
-        return super.onUnbind(intent);
-    }
-
-    private final IBinder mBinder = new LocalBinder();
-    
-    
-	@Override
-	  public int onStartCommand(Intent intent, int flags, int startId) {
-		initialize();
-		rfDuinoState = mDeviceState.DISCONNECTED;
-		actionState = serviceState.IDLE;
-		
-        IntentFilter intentFilter = new IntentFilter("ECG_EVENT");
-        registerReceiver(receiver, intentFilter);
-		
-		lastValue0 = 0.0f;
-		MyThread myThread = new MyThread(); // creating a new thread?
-		myThread.start();
-		return  super.onStartCommand(intent, flags, startId);
-	}
-	
-
-	
-	public void close() {
-        if (mBluetoothGatt == null) {
-            return;
-        }
-        mBluetoothGatt.close();
-        mBluetoothGatt = null;
-    }
-	 //***********************************************
-	 // THREAD
-	 //***********************************************
-	final class MyThread extends Thread{
+	 public rfDuinoClass(Activity parent){
+		 rfDuinoState = mDeviceState.DISCONNECTED;
+		 index = 0;
+		 this.parent=parent;
+		 context = parent.getBaseContext();
+		 initialize(parent.getBaseContext());
 		 
-		 @Override
-		 public void run() {
-		  // TODO Auto-generated method stub
-		startScan();
-  
-	
-	
-		 }	
-	}
-	
+		 
+	 }
+	 
 	 //***********************************************
 	 // BLE FUNCTIONS
 	 //***********************************************
@@ -270,8 +194,6 @@ public class bleService  extends Service{
 								}
 							}, 250);
 						
-						handler.postDelayed(runnablePlot, 100);
-						
 		            } else {
 		                Log.w(TAG, "onServicesDiscovered received: " + status);
 		            }
@@ -321,50 +243,64 @@ public class bleService  extends Service{
 									send(new byte[] {(byte)0x55});
 								}
 							});
-							
-			        	 //Place data onto FIFO 
-						 bluetoothQueueForUI.offer(floatValue0);
-						 bluetoothQueueForUI.offer(floatValue1);
-						 bluetoothQueueForUI.offer(floatValue2);
-						 bluetoothQueueForUI.offer(floatValue3);
-						 bluetoothQueueForUI.offer(floatValue4);
-						 
-						 if (actionState == serviceState.RECORD){
-							 bluetoothQueueForSaving.offer(floatValue0);
-							 bluetoothQueueForSaving.offer(floatValue1);
-							 bluetoothQueueForSaving.offer(floatValue2);
-							 bluetoothQueueForSaving.offer(floatValue3);
-							 bluetoothQueueForSaving.offer(floatValue4);
-						 }
-						 
-			        	 /* String strValue;
-						try {
-							strValue = new String(rawValue, "UTF-8");
-						} catch (UnsupportedEncodingException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						}
-			        	 // int intValue = 0;
 			        	  
-			        	  strValue = HexAsciiHelper.bytesToAsciiMaybe(rawValue);
-			        	  if (!strValue.equals(null))
-			        	  Log.e(TAG, strValue);*/
-			           // broadcastUpdate(ACTION_DATA_AVAILABLE, characteristic);
-			              String time;
-			              //Time now = new Time();
-			      		 //now.setToNow();
-			      		 //long millis = System.currentTimeMillis();
-			      		 //time =  now.format("%H:%M:%S");
+
+			             String time;
+
 			      		 Calendar cal = Calendar.getInstance();
 			      		 
 			      		 time = sdf.format(cal.getTime());
 			        	 Log.e(TAG, time + "- " +String.valueOf(floatValue0)+ "," +String.valueOf(floatValue1)
 			        			 + "," +String.valueOf(floatValue2)+ "," +String.valueOf(floatValue3)+ 
 			        			 "," +String.valueOf(floatValue4));
-			      		//Log.e(TAG, String.valueOf(rawValue.length));
-			        	
-			          lastValue0 = floatValue0;
-
+			      		
+			        	 if (firstTime){
+				        		index =0;
+				        		firstTime = false;
+				        	}
+			        	 
+			        	 
+			        
+				        	
+							parent.runOnUiThread(new Runnable(){
+								
+								public void run(){
+									Log.e(DEBUG, "In Ui Thread");
+									 line.addPoint(index,floatValue0);
+										index++;
+				    		GraphicalView lineView = line.getView(parent);
+							//Get reference to layout:
+							LinearLayout layout =(LinearLayout)parent.findViewById(R.id.chart);
+							//clear the previous layout:
+							layout.removeAllViews();
+							//add new graph:
+							layout.addView(lineView);
+								}
+							});
+							
+			        	 /*h.post(new Runnable(){
+								@Override
+								public void run(){
+									line.addPoint(index,floatValue0);
+									index++;
+						        	line.addPoint(index,floatValue1);
+						        	index++;
+						        	line.addPoint(index,floatValue2);
+						        	index++;
+						        	line.addPoint(index,floatValue3);
+						        	index++;
+						        	line.addPoint(index,floatValue4);
+						        	index++;
+						        	
+						    		GraphicalView lineView = line.getView(context);
+									//Get reference to layout:
+									LinearLayout layout =(LinearLayout)parent.findViewById(R.id.chart);
+									//clear the previous layout:
+									layout.removeAllViews();
+									//add new graph:
+									layout.addView(lineView);
+								}
+							});*/
 			        	
 			        }
 			}; //End of mGattCallback
@@ -407,9 +343,9 @@ public class bleService  extends Service{
 	  // MISC FUNCTIONS
 	  //***********************************************
 			
-	  public boolean initialize() {
+	  public boolean initialize(Context context) {
 		     if (mBluetoothManager == null) {
-		            mBluetoothManager = (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
+		            mBluetoothManager = (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
 		            if (mBluetoothManager == null) {
 		                Log.e(TAG, "Unable to initialize BluetoothManager.");
 		                return false;
@@ -424,58 +360,6 @@ public class bleService  extends Service{
 
 		        return true;
 	    }
-	  
-	  
-	  private Runnable runnablePlot = new Runnable() {
-		   @Override
-		   public void run() {
-			  
-		
-			  if(lastValue0 != 0.0f){
-				Intent i = new Intent("ECG_EVENT");
-	     			
-   				i.putExtra("ECGData0", Float.parseFloat(String.valueOf(floatValue0)));
-   				i.putExtra("ECGData1", floatValue1);
-   				i.putExtra("ECGData2", floatValue2);
-   				i.putExtra("ECGData3", floatValue3);
-   				i.putExtra("ECGData4", floatValue4);
-   				
-   				sendBroadcast(i);
-			  
-			  }
-			  handler.postDelayed(this, 100);
-			  
-		   }};
-		   
-		   
-		   private final BroadcastReceiver receiver = new BroadcastReceiver() {
-			   @Override
-			   public void onReceive(Context context, Intent intent) {
-			      int command = intent.getIntExtra("command", 0);
-			      
-			      Intent i = new Intent(bleService.this, dataSaveService.class);
-			      
-			      
-			      switch(command){
-			      case 1:
-			    	  // Start recording
-					  startService(i);
-					  actionState = serviceState.RECORD;
-			    	  break;
-			      case 2:
-			    	  // stop recording
-					  stopService(i);
-					  actionState = serviceState.IDLE;
-			    	  break;
-			      default:
-			    	  // do nothing
-			    	  break;
-			    	  
-			      }
-			    		  
-			      
-			 
-			   }
-			};
+
 
 }

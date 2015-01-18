@@ -3,6 +3,7 @@ package com.example.rfduino;
 
 
 
+import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Locale;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -26,6 +27,7 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
 import android.support.v4.content.LocalBroadcastManager;
@@ -36,6 +38,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.Toast;
+import android.widget.ToggleButton;
 
 public class Bluetooth extends Activity {
 	private final static String TAG = "BLUETOOTH";
@@ -45,6 +48,8 @@ public class Bluetooth extends Activity {
 	private static Context context;
 	
 	Button blueon, blueoff, bluecancel, bluesearch, sayHello, sayBye, stopBut, startBut;
+	ToggleButton recordBut;
+	
 	private Handler handler = new Handler();
 	
 	
@@ -94,6 +99,7 @@ public class Bluetooth extends Activity {
 		sayBye = (Button)findViewById(R.id.sayBye);
 		startBut = (Button)findViewById(R.id.start);
 		stopBut = (Button)findViewById(R.id.stop);
+		recordBut = (ToggleButton)findViewById(R.id.record);
 		
 		line.initialize();
 		currentX = 0.0f;
@@ -105,6 +111,9 @@ public class Bluetooth extends Activity {
 		 ChartHandler chartUIHandler = new ChartHandler();
 		 chartThread = new ChartThread(chartUIHandler);
 		 chartThread.start();
+		 
+		 createAppFolder();
+		 createECGFolder();
 		
 	}
 	
@@ -113,6 +122,9 @@ public class Bluetooth extends Activity {
 	  super.onDestroy();
 	  //un-register BroadcastReceiver
 	 // unregisterReceiver(broadcastRx);
+	  Intent intent = new Intent(Bluetooth.this, bleService.class);
+	  stopService(intent);
+	  
 	 }
 	 
 	 
@@ -198,9 +210,14 @@ public class Bluetooth extends Activity {
 		sayBye.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View v) {
-				 if(myBluetoothAdapter!=null){
+				 /*if(myBluetoothAdapter!=null){
 					 bleService.send(new byte[] {(byte)0xFF});
-				 }
+				 }*/
+				
+				  Intent intent = new Intent(Bluetooth.this, bleService.class);
+				  stopService(intent);
+				
+				
 			}     
 	    });
 		
@@ -218,6 +235,30 @@ public class Bluetooth extends Activity {
 			}     
 	    });
 		
+		
+		recordBut.setOnClickListener(new View.OnClickListener() {
+			
+			@Override
+			public void onClick(View v) {
+				if(recordBut.isChecked()){
+					//start to record
+					  //Intent intent = new Intent(Bluetooth.this, dataSaveService.class);
+					  //startService(intent);
+					Intent i = new Intent("ECG_EVENT");
+					i.putExtra("command", 1);
+					sendBroadcast(i);
+				}
+				else{
+					// stop recording
+					//Intent intent = new Intent(Bluetooth.this, dataSaveService.class);
+					//stopService(intent);
+					Intent i = new Intent("ECG_EVENT");
+					i.putExtra("command", 2);
+					sendBroadcast(i);
+				}
+				
+			}
+		});
 		
 	}
 	
@@ -335,7 +376,17 @@ public class Bluetooth extends Activity {
 	}
 	
 	
-
+  	private void createAppFolder(){
+  		final String PATH = Environment.getExternalStorageDirectory() + "/rfDuino/";
+  		if(!(new File(PATH)).exists()) 
+  		new File(PATH).mkdirs();
+  	}
+  	
+  	private void createECGFolder(){
+  		final String PATH = Environment.getExternalStorageDirectory() + "/rfDuino/ECG Recordings";
+  		if(!(new File(PATH)).exists()) 
+  		new File(PATH).mkdirs();
+  	}
 	
 	
 	

@@ -66,8 +66,8 @@
         android:id="@+id/stop"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignRight="@+id/bluetoothSearch"
-        android:layout_below="@+id/bluetoothSearch"
+        android:layout_above="@+id/chart"
+        android:layout_toRightOf="@+id/start"
         android:text="Stop" />
 
     <Button
@@ -75,7 +75,18 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_above="@+id/chart"
-        android:layout_toLeftOf="@+id/stop"
+        android:layout_marginLeft="36dp"
+        android:layout_toRightOf="@+id/sayBye"
         android:text="Start" />
+
+    <ToggleButton
+        android:id="@+id/record"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/bluetoothSearch"
+        android:layout_toRightOf="@+id/stop"
+        android:text="Record" 
+        android:textOff = "Record"
+        android:textOn = "Record"/>
 
 </RelativeLayout>
