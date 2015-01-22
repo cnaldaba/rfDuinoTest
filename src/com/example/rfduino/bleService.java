@@ -77,6 +77,7 @@ public class bleService  extends Service{
 	 private enum serviceState {RECORD, IDLE};
 	 private serviceState actionState;
 	 
+	 
 	 static LinkedBlockingQueue<Float>  bluetoothQueueForUI = new LinkedBlockingQueue<Float>();
 	 static LinkedBlockingQueue<Float>  bluetoothQueueForSaving = new LinkedBlockingQueue<Float>();
 	 //***********************************************
@@ -89,11 +90,28 @@ public class bleService  extends Service{
 	 
 	@Override
 		public void onDestroy(){ // disconnects the sensortag connection after quitting service
+		
+        Handler h = new Handler(Looper.getMainLooper());
+		h.post(new Runnable(){
+			@Override
+			public void run(){
+				send(new byte[] {(byte)0x00});
+			}
+		});
+		
 		unregisterReceiver(receiver);
 		
-		mBluetoothGatt.disconnect();	
-		mBluetoothAdapter.stopLeScan(mLeScanCallback);
-		Log.i(DEBUG, "Disconnected");
+		
+		h.postDelayed(new Runnable(){
+			@Override
+			public void run(){
+				mBluetoothGatt.disconnect();	
+				mBluetoothAdapter.stopLeScan(mLeScanCallback);
+				Log.i(DEBUG, "Disconnected");
+			}
+		}, 250);
+		
+		
 		}
 	 
 	@Override
@@ -218,9 +236,11 @@ public class bleService  extends Service{
 			                Log.i(TAG, "Connected to RFduino.");
 			                Log.i(TAG, "Attempting to start service discovery:" +
 			                		mBluetoothGatt.discoverServices());
+			                rfDuinoState = mDeviceState.CONNECTED;
 			            } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
 			                Log.i(TAG, "Disconnected from RFduino.");
 			                //broadcastUpdate(ACTION_DISCONNECTED);
+			                rfDuinoState = mDeviceState.DISCONNECTED;
 			            }
 			       
 			    }
@@ -459,8 +479,19 @@ public class bleService  extends Service{
 			      switch(command){
 			      case 1:
 			    	  // Start recording
+			    	  if(rfDuinoState == mDeviceState.CONNECTED){
 					  startService(i);
 					  actionState = serviceState.RECORD;
+			    	  }
+			    	  else{
+			    		Handler h = new Handler(Looper.getMainLooper());
+			      		h.post(new Runnable(){
+			      			@Override
+			      			public void run(){	
+			      				Toast.makeText( bleService.this, "rfDuino not connected", Toast.LENGTH_SHORT).show();
+			      			}
+			      		});
+			    	  }
 			    	  break;
 			      case 2:
 			    	  // stop recording

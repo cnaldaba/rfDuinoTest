@@ -96,8 +96,8 @@ public class ECGLine {
 			mRenderer.setLegendTextSize(25);
 			mRenderer.setGridColor(Color.BLACK);
 			mRenderer.setXLabelsAngle(-45);
-			mRenderer.setYAxisMax(15);
-			mRenderer.setYAxisMin(4);
+			//mRenderer.setYAxisMax(15);
+			//mRenderer.setYAxisMin(4);
 			mRenderer.setShowLabels(false);
 			mRenderer.setShowLegend(false);
 			//mRenderer.setYAxisMax(yMax);
