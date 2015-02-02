@@ -3,6 +3,8 @@ package com.example.rfduino;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.UUID;
 
 import android.app.Service;
@@ -161,9 +163,14 @@ public class btMateService extends Service {
 	    private final BluetoothSocket mmSocket;
 	    private final InputStream mmInStream;
 	    private final OutputStream mmOutStream;
-	    private Boolean status;
+	    private Boolean status, startOfInt;
+	    private short value;
+	    private char ptr;
 	 
 	    public ReadThread(BluetoothSocket socket) {
+	        value = 0;
+	    	startOfInt = false;
+	    	ptr = 0;
 	    	status = true;
 	    	mmSocket = socket;
 	        InputStream tmpIn = null;
@@ -186,22 +193,50 @@ public class btMateService extends Service {
 				e.printStackTrace();
 			}
 	        pastMsTime = System.currentTimeMillis();
+	       
 	    }
 	 
 	    public void run() {
-	        //byte[] buffer = new byte[1024];  // buffer store for the stream
-	        char c;
+	        byte[] buffer = new byte[1024];  // buffer store for the stream
+	        //char c;
+	        ByteBuffer bb = ByteBuffer.allocate(2);
+	        bb.order(ByteOrder.LITTLE_ENDIAN);
 	        byte b;
-	        int num;
+	        int numBytes;
 	        // Keep listening to the InputStream until an exception occurs
 	        while (status) {
 	            try {
 	                // Read from the InputStream
+	            	//numBytes = mmInStream.read(buffer);
 	            	
+	            	numBytes = mmInStream.available();
+	            	
+	            	for (int i =0; i<= numBytes; i++){
 	                b = (byte) mmInStream.read();
 	                
-	                Log.d(TAG, String.valueOf(b));
-	               
+	               // Log.d(TAG, String.valueOf(b));
+	            	
+	                
+	                
+	                if(startOfInt){
+	                	bb.put(b);
+	                	if (ptr == 1){
+	                		value = bb.getShort(0);
+	                		Log.d(TAG, String.valueOf(value));
+	                		bb.clear();
+	                		ptr = 0;
+	                		startOfInt = false;
+	                	}
+	                	else{
+	                		ptr++;
+	                	}
+	            	}
+	                
+	                if (b == '\n'){
+	                	startOfInt = true;
+	                }
+	            	}
+	                
 	                
 	                
 	                // To write shit:
