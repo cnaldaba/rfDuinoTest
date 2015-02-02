@@ -23,6 +23,7 @@
         
         <service android:name="bleService"></service>
         <service android:name="dataSaveService"></service>
+         <service android:name="btMateService"></service>
         
         <activity
             android:name=".MainActivity"

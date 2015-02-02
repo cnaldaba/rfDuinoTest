@@ -54,7 +54,8 @@ public class Bluetooth extends Activity {
 	private static Context context;
 	
 	Button blueon, blueoff, bluecancel, bluesearch, sayHello, sayBye, stopBut, startBut,viewBut;
-	ToggleButton recordBut;
+	Button BTDiscover, BTDisconnect;
+	ToggleButton recordBut, playPauseBut;
 	
 	private Handler handler = new Handler();
 	
@@ -108,7 +109,11 @@ public class Bluetooth extends Activity {
 		startBut = (Button)findViewById(R.id.start);
 		stopBut = (Button)findViewById(R.id.stop);
 		viewBut = (Button)findViewById(R.id.view);
+		BTDiscover = (Button)findViewById(R.id.discoverBTMate);
+		BTDisconnect = (Button)findViewById(R.id.disconnectBTMate);
 		recordBut = (ToggleButton)findViewById(R.id.record);
+		playPauseBut = (ToggleButton)findViewById(R.id.playPause);
+		
 		
 		line.initialize();
 		currentX = 0.0f;
@@ -134,8 +139,17 @@ public class Bluetooth extends Activity {
 	  super.onDestroy();
 	  //un-register BroadcastReceiver
 	 // unregisterReceiver(broadcastRx);
+	  
+	  Intent i = new Intent("BTMATE_EVENT");
+		i.putExtra("command", 'p');
+		sendBroadcast(i);
+		
+		
 	  Intent intent = new Intent(Bluetooth.this, bleService.class);
 	  stopService(intent);
+	  
+	  Intent intent2 = new Intent(Bluetooth.this, btMateService.class);
+	  stopService(intent2);
 	  
 	 }
 	 
@@ -147,6 +161,12 @@ public class Bluetooth extends Activity {
 		
 	@Override
 	protected void onPause() {
+		Intent i = new Intent("BTMATE_EVENT");
+		i.putExtra("command", 'p');
+		sendBroadcast(i);
+		
+		 Intent intent2 = new Intent(Bluetooth.this, btMateService.class);
+		  stopService(intent2);
 		super.onPause();
 	}
 
@@ -284,6 +304,41 @@ public class Bluetooth extends Activity {
 				}
 			}     
 	    });
+		
+		BTDiscover.setOnClickListener(new View.OnClickListener(){
+			@Override
+			public void onClick(View v){
+				Intent intent = new Intent(Bluetooth.this, btMateService.class);
+				startService(intent);
+			}
+		});
+		BTDisconnect.setOnClickListener(new View.OnClickListener(){
+			@Override
+			public void onClick(View v){
+				Intent intent = new Intent(Bluetooth.this, btMateService.class);
+				stopService(intent);
+			}
+		});
+		
+		playPauseBut.setOnClickListener(new View.OnClickListener() {
+			
+			@Override
+			public void onClick(View v) {
+				if(recordBut.isChecked()){
+					Intent i = new Intent("BTMATE_EVENT");
+					i.putExtra("command", 's');
+					sendBroadcast(i);
+				}
+				else{
+
+					Intent i = new Intent("BTMATE_EVENT");
+					i.putExtra("command", 'p');
+					sendBroadcast(i);
+				}
+				
+			}
+		});
+		
 	}
 	
 	

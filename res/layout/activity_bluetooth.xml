@@ -14,7 +14,7 @@
         android:layout_height="wrap_content"
         android:layout_centerHorizontal="true"
         android:gravity="center_horizontal"
-        android:text="Bluetooth"
+        android:text="Bluetooth Low Energy"
         android:textSize="40sp" />
 
     <Button
@@ -71,30 +71,69 @@
         android:text="Stop" />
 
     <Button
-        android:id="@+id/start"
+        android:id="@+id/view"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_above="@+id/chart"
-        android:layout_marginLeft="36dp"
-        android:layout_toRightOf="@+id/sayBye"
-        android:text="Start" />
+        android:layout_alignRight="@+id/bluetoothSearch"
+        android:text="View" />
 
     <ToggleButton
         android:id="@+id/record"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_below="@+id/bluetoothSearch"
-        android:layout_toRightOf="@+id/stop"
-        android:text="Record" 
-        android:textOff = "Record"
-        android:textOn = "Record"/>
+        android:layout_toRightOf="@+id/sayBye"
+        android:text="Record"
+        android:textOff="Record"
+        android:textOn="Record" />
+
+    <TextView
+        android:id="@+id/textView2"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentRight="true"
+        android:layout_below="@+id/chart"
+        android:text="Bluetooth Mate Silver Controls:"
+        android:textAppearance="?android:attr/textAppearanceLarge" />
 
     <Button
-        android:id="@+id/view"
+        android:id="@+id/discoverBTMate"
+        style="?android:attr/buttonStyleSmall"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@+id/chart"
-        android:layout_toRightOf="@+id/sayHello"
-        android:text="View" />
+        android:layout_alignLeft="@+id/textView2"
+        android:layout_alignParentRight="true"
+        android:layout_below="@+id/textView2"
+        android:layout_marginTop="22dp"
+        android:text="Discover Devices"
+        android:textSize="20sp" />
+
+    <Button
+        android:id="@+id/start"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/chart"
+        android:layout_toRightOf="@+id/record"
+        android:text="Start" />
+
+    <Button
+        android:id="@+id/disconnectBTMate"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/discoverBTMate"
+        android:layout_below="@+id/discoverBTMate"
+        android:text="Disconnect" />
+
+    <ToggleButton
+        android:id="@+id/playPause"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBaseline="@+id/disconnectBTMate"
+        android:layout_alignBottom="@+id/disconnectBTMate"
+        android:layout_alignLeft="@+id/sayHello"
+        android:text="ToggleButton"
+        android:textOff="Play"
+        android:textOn="Pause" />
 
 </RelativeLayout>
