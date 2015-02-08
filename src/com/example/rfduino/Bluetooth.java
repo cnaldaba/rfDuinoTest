@@ -77,8 +77,8 @@ public class Bluetooth extends Activity {
 	private int xScrollAhead = 35;
 	
 	private ECGLine line = new ECGLine();
-	private final int chartDelay = 20; // millisecond delay for count
-	public LinkedBlockingQueue<Float> queue = bleService.bluetoothQueueForUI;
+	private final int chartDelay = 3; // millisecond delay for count
+	public LinkedBlockingQueue<Float> queue = btMateService.bluetoothMateQueueForUI;
 	public LinkedBlockingQueue<Float> readQueue = readFileClass.readQueueForUI;
 	
 	private float samplingRate = 0.003f; // TODO: Edit this
@@ -102,17 +102,17 @@ public class Bluetooth extends Activity {
 		
 		myBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 		
-		blueon = (Button)findViewById(R.id.bluetoothOn);
-		bluesearch =(Button)findViewById(R.id.bluetoothSearch);
-		sayHello = (Button)findViewById(R.id.sayHello);
-		sayBye = (Button)findViewById(R.id.sayBye);
+		//blueon = (Button)findViewById(R.id.bluetoothOn);
+		//bluesearch =(Button)findViewById(R.id.bluetoothSearch);
+		//sayHello = (Button)findViewById(R.id.sayHello);
+		//sayBye = (Button)findViewById(R.id.sayBye);
 		startBut = (Button)findViewById(R.id.start);
 		stopBut = (Button)findViewById(R.id.stop);
 		viewBut = (Button)findViewById(R.id.view);
 		BTDiscover = (Button)findViewById(R.id.discoverBTMate);
 		BTDisconnect = (Button)findViewById(R.id.disconnectBTMate);
 		recordBut = (ToggleButton)findViewById(R.id.record);
-		playPauseBut = (ToggleButton)findViewById(R.id.playPause);
+		//playPauseBut = (ToggleButton)findViewById(R.id.playPause);
 		
 		
 		line.initialize();
@@ -192,72 +192,25 @@ public class Bluetooth extends Activity {
 	
 	
 	public void initButtons(){
-		blueon.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View v) {
-				 if(myBluetoothAdapter==null){
-					 Toast.makeText(getApplicationContext(), "Bluetooth service not available in the device", Toast.LENGTH_SHORT).show();
-	             }
-				 else{
-					 if(!myBluetoothAdapter.isEnabled()){
-							Intent turnOn = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-							startActivityForResult(turnOn, 0);
-							Toast.makeText(getApplicationContext(), "Bluetooth turned ON", Toast.LENGTH_SHORT).show();
-						}else{
-							Toast.makeText(getApplicationContext(), "Bluetooth is already ON", Toast.LENGTH_SHORT).show();
-						}
-					 }	
-			}     
-	    });
-	
-		bluesearch.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View v) {
-				 if(myBluetoothAdapter!=null){
-					 Intent intent = new Intent(Bluetooth.this, bleService.class);
-					 startService(intent);
-					 
-					 //rfDuino.startScan();
-					 
-
-				 }
-			}     
-	    });
 		
-		sayHello.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View v) {
-				 if(myBluetoothAdapter!=null){
-					 bleService.send(new byte[] {0x00});
-				 }
-			}     
-	    });
-		
-		sayBye.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View v) {
-				 /*if(myBluetoothAdapter!=null){
-					 bleService.send(new byte[] {(byte)0xFF});
-				 }*/
-				
-				  Intent intent = new Intent(Bluetooth.this, bleService.class);
-				  stopService(intent);
-				
-				
-			}     
-	    });
 		
 		startBut.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View v) {
-				startDAQ ();
+				//startDAQ ();
+				 Intent i = new Intent("BTMATE_EVENT");
+				 i.putExtra("command", 's');
+			     sendBroadcast(i);
 			}     
 	    });
 		
 		stopBut.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View v) {
-				 stopDAQ();
+				// stopDAQ();
+			     Intent i = new Intent("BTMATE_EVENT");
+				 i.putExtra("command", 'p'); // stop recieving data
+			     sendBroadcast(i);
 			}     
 	    });
 		
@@ -266,16 +219,16 @@ public class Bluetooth extends Activity {
 			
 			@Override
 			public void onClick(View v) {
-				if(recordBut.isChecked()){
-					Intent i = new Intent("ECG_EVENT");
-					i.putExtra("command", 1);
-					sendBroadcast(i);
+				if(recordBut.isChecked()){  // Start recording
+					  Intent i = new Intent("BTMATE_EVENT");
+						i.putExtra("command", 'r');
+						sendBroadcast(i);
 				}
-				else{
+				else{ // stop recording
 
-					Intent i = new Intent("ECG_EVENT");
-					i.putExtra("command", 2);
-					sendBroadcast(i);
+					 Intent i = new Intent("BTMATE_EVENT");
+					 i.putExtra("command", 'n');
+						sendBroadcast(i);
 				}
 				
 			}
@@ -320,24 +273,7 @@ public class Bluetooth extends Activity {
 			}
 		});
 		
-		playPauseBut.setOnClickListener(new View.OnClickListener() {
-			
-			@Override
-			public void onClick(View v) {
-				if(recordBut.isChecked()){
-					Intent i = new Intent("BTMATE_EVENT");
-					i.putExtra("command", 's');
-					sendBroadcast(i);
-				}
-				else{
 
-					Intent i = new Intent("BTMATE_EVENT");
-					i.putExtra("command", 'p');
-					sendBroadcast(i);
-				}
-				
-			}
-		});
 		
 	}
 	
@@ -382,7 +318,7 @@ public class Bluetooth extends Activity {
 			
 			double yVal = ((double)msg.arg1)/1000;
 			
-			Log.e(TAG,String.valueOf(yVal));
+			//Log.e(TAG,String.valueOf(yVal));
 			
         	if (firstTime){
         		time = 0;
@@ -427,7 +363,7 @@ public class Bluetooth extends Activity {
 				try {
 					Thread.sleep(chartDelay);
 					if (queue.size() >= 1){
-					yVal = (double) queue.poll(2,TimeUnit.SECONDS);
+					yVal = (double) queue.poll();
 					currentX = currentX + samplingRate;
 					Message msg = Message.obtain();
 					msg.arg1 = (int)Math.round(yVal*1000);

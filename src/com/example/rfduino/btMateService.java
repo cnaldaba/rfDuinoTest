@@ -6,6 +6,7 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.UUID;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import android.app.Service;
 import android.bluetooth.BluetoothAdapter;
@@ -43,6 +44,14 @@ public class btMateService extends Service {
 	 
 	 public long pastMsTime, nowMsTime, duration;
 	 
+	 public  enum connectState {CONNECTED, DISCONNECTED};
+	 public  enum deviceState {IDLE, READ};
+	 
+	 public connectState mateConnected;
+	 
+	 static LinkedBlockingQueue<Float>  bluetoothMateQueueForUI = new LinkedBlockingQueue<Float>();
+	 static LinkedBlockingQueue<Float>  bluetoothQueueForSaving = new LinkedBlockingQueue<Float>();
+	 
 	@Override
 	public IBinder onBind(Intent intent) {
 		// TODO Auto-generated method stub
@@ -67,6 +76,8 @@ public class btMateService extends Service {
 	
 	@Override
 	  public int onStartCommand(Intent intent, int flags, int startId) {
+		mateConnected = connectState.DISCONNECTED;
+		
 		mSocket = null;
 		mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 		IntentFilter filter = new IntentFilter();
@@ -141,7 +152,7 @@ public class btMateService extends Service {
 	    	try {
 	    		Log.d(TAG, "+++ Connecting...");
 				mSocket.connect();
-				
+				mateConnected = connectState.CONNECTED;
 				mateRead = new ReadThread(mSocket);
 				mateRead.start();
 			} catch (IOException e) {
@@ -165,16 +176,23 @@ public class btMateService extends Service {
 	    private final OutputStream mmOutStream;
 	    private Boolean status, startOfInt;
 	    private short value;
-	    private char ptr;
-	 
+	    private char ptr, guiPTR;
+	    public deviceState mateState;
+	    public boolean saveData;
+	    private   ByteBuffer bb;
+	    
 	    public ReadThread(BluetoothSocket socket) {
+	    	saveData = false;
+	    	mateState = deviceState.IDLE;
 	        value = 0;
 	    	startOfInt = false;
 	    	ptr = 0;
+	    	guiPTR = 0;
 	    	status = true;
 	    	mmSocket = socket;
 	        InputStream tmpIn = null;
 	        OutputStream tmpOut = null;
+	        bb = ByteBuffer.allocate(2);
 	        
 	        // Get the input and output streams, using temp objects because
 	        // member streams are final
@@ -186,20 +204,14 @@ public class btMateService extends Service {
 	        mmInStream = tmpIn;
 	        mmOutStream = tmpOut;
 	        
-	        try {
-				mmOutStream.write(START);
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-	        pastMsTime = System.currentTimeMillis();
+	        startStream();
+	       
 	       
 	    }
 	 
 	    public void run() {
-	        byte[] buffer = new byte[1024];  // buffer store for the stream
 	        //char c;
-	        ByteBuffer bb = ByteBuffer.allocate(2);
+	      
 	        bb.order(ByteOrder.LITTLE_ENDIAN);
 	        byte b;
 	        int numBytes;
@@ -213,19 +225,31 @@ public class btMateService extends Service {
 	            	
 	            	for (int i =0; i<= numBytes; i++){
 	                b = (byte) mmInStream.read();
-	                
-	               // Log.d(TAG, String.valueOf(b));
-	            	
-	                
-	                
+	            
 	                if(startOfInt){
 	                	bb.put(b);
+	                	
+	                	
 	                	if (ptr == 1){
 	                		value = bb.getShort(0);
-	                		Log.d(TAG, String.valueOf(value));
+	                		//Log.d(TAG, String.valueOf(value));
 	                		bb.clear();
 	                		ptr = 0;
 	                		startOfInt = false;
+	                		
+	                		//FOR GUI PLOT
+	                		if (guiPTR == 2){
+	                			guiPTR = 0;
+	                			bluetoothMateQueueForUI.offer((float) value);
+	                		}
+	                		else{
+	                			guiPTR++;
+	                		}
+	                		
+	                		//FOR SAVING SERVICE
+	                		if (saveData){
+	                			 bluetoothQueueForSaving.offer((float) value);
+	                		}
 	                	}
 	                	else{
 	                		ptr++;
@@ -236,17 +260,6 @@ public class btMateService extends Service {
 	                	startOfInt = true;
 	                }
 	            	}
-	                
-	                
-	                
-	                // To write shit:
-	            	/*Log.d(TAG, "Sent Byte!");
-	            	mmOutStream.write(DISCONNECT);
-	            	status = false;*/
-	            	
-	            	
-	            	
-	            	
 	            	
 	                // Send the obtained bytes to the UI activity
 	                //mHandler.obtainMessage(MESSAGE_READ, bytes, -1, buffer).sendToTarget();
@@ -256,6 +269,26 @@ public class btMateService extends Service {
 	        }
 	    }
 	 
+	    public void startStream(){
+	    	   try {
+					mmOutStream.write(START);
+					mateState = deviceState.READ;
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+	    }
+	    
+	    public void stopStream(){
+	    	try {
+				mmOutStream.write(DISCONNECT);
+				mateState = deviceState.IDLE;
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+	    }
+	    
 	    /* Call this from the main activity to send data to the remote device */
 	    public void writeBytes(byte[] bytes) {
 	        try {
@@ -286,6 +319,11 @@ public class btMateService extends Service {
 	        try {
 	            mmSocket.close();
 	        } catch (IOException e) { }
+	        
+	        if (saveData){
+	        	Intent i = new Intent(btMateService.this, dataSaveService.class);
+	        	stopService(i);
+	        }
 	    }
 	}
 	
@@ -296,15 +334,31 @@ public class btMateService extends Service {
 		@Override
 		public void onReceive(Context context, Intent intent) {
 			char action = intent.getCharExtra("command", '0');
-			
+			Intent i = new Intent(btMateService.this, dataSaveService.class);
 			if (action == 's'){
-				Log.i(TAG, "Recieved s");
-				mateRead.writeByte((char) 0xFF);
+				if ( (mateConnected == connectState.CONNECTED) & (mateRead.mateState == deviceState.IDLE)){
+				
+				mateRead.startStream();
+				}
 			}
 			else if (action == 'p'){
-				Log.i(TAG, "Recieved p"); // STOP device
-				mateRead.writeByte((char) 0xFF);
-				
+				if ( (mateConnected == connectState.CONNECTED) & (mateRead.mateState == deviceState.READ)){
+			    // stop receiving data device
+				mateRead.stopStream();
+				}
+			}
+			else if(action == 'r'){
+				if ( (mateConnected == connectState.CONNECTED) & (mateRead.mateState == deviceState.READ)){
+					mateRead.saveData = true;
+					startService(i);
+				}
+			}
+			else if(action == 'n'){
+				if ( (mateConnected == connectState.CONNECTED) & (mateRead.mateState == deviceState.READ)){
+					mateRead.saveData = false;
+					stopService(i);
+					bluetoothQueueForSaving.clear();
+				}
 			}
 			 
         

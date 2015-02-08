@@ -16,8 +16,9 @@ import android.util.Log;
 
 public class ECGLine {
 
-		private static final double yMin = 0.0;
-		private static final double yMax = 10.0;
+		private static final double yMin = -1000.0;
+		private static final double yMax = 2000.0;
+		private static final int windowSize = 200;
 		
 		//Just for one line
 		private TimeSeries series = new TimeSeries("Line");
@@ -100,8 +101,10 @@ public class ECGLine {
 			//mRenderer.setYAxisMin(4);
 			mRenderer.setShowLabels(false);
 			mRenderer.setShowLegend(false);
-			//mRenderer.setYAxisMax(yMax);
-			//mRenderer.setYAxisMin(yMin);
+			mRenderer.setYAxisMax(yMax);
+			mRenderer.setYAxisMin(yMin);
+			//mRenderer.setXAxisMax(windowSize);
+			//mRenderer.setXAxisMin(0);
 			//mRenderer.set
 			
 			count =0;
@@ -115,9 +118,11 @@ public class ECGLine {
 		public void addPoint(double x, double y){
 			series.add(x, y);
 			
-			Log.d("ECG", String.valueOf(y));
+			//Log.d("ECG", String.valueOf(y));
 			//nowTxt.setToNow();
 			//interval = nowTxt.toMillis(false) - now;
+			//mRenderer.setXAxisMax(windowSize + x);
+			//mRenderer.setXAxisMin(x)
 			
 			if (interval == 1000){ // 1 second passed
 			mRenderer.addXTextLabel(x,nowTxt.format("%k:%M:%S"));
@@ -130,8 +135,9 @@ public class ECGLine {
 			
 			
 			
-			if (count < 50){
+			if (count < windowSize){
 				count++;
+				
 			}
 			else{
 				series.remove(0);

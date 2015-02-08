@@ -98,7 +98,7 @@ public class FileOperations {
     	fw.append("\r\n");
         
         fw.close();
-        Log.d("Suceess","Sucess");
+     //   Log.d("Suceess","Sucess");
         return ;
       } catch (IOException e) {
         e.printStackTrace();

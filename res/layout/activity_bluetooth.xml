@@ -14,79 +14,18 @@
         android:layout_height="wrap_content"
         android:layout_centerHorizontal="true"
         android:gravity="center_horizontal"
-        android:text="Bluetooth Low Energy"
+        android:text="Bluetooth Mate Silver"
         android:textSize="40sp" />
-
-    <Button
-        android:id="@+id/bluetoothSearch"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_below="@+id/textView1"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="29dp"
-        android:text="Search Devices" />
-
-    <Button
-        android:id="@+id/bluetoothOn"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignLeft="@+id/bluetoothSearch"
-        android:layout_below="@+id/bluetoothSearch"
-        android:text="Turn BLE on" />
-
-    <Button
-        android:id="@+id/sayHello"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignBaseline="@+id/bluetoothOn"
-        android:layout_alignBottom="@+id/bluetoothOn"
-        android:layout_toRightOf="@+id/bluetoothOn"
-        android:text="Say  Hello" />
-
-    <Button
-        android:id="@+id/sayBye"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@+id/bluetoothSearch"
-        android:layout_toRightOf="@+id/sayHello"
-        android:text="Say Bye" />
 
     <LinearLayout
         android:id="@+id/chart"
         android:layout_width="match_parent"
         android:layout_height="250dp"
-        android:layout_alignLeft="@+id/bluetoothOn"
-        android:layout_below="@+id/bluetoothOn"
+        android:layout_below="@+id/textView1"
+        android:layout_centerHorizontal="true"
         android:layout_marginTop="45dp"
         android:orientation="vertical" >
-
     </LinearLayout>
-
-    <Button
-        android:id="@+id/stop"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_above="@+id/chart"
-        android:layout_toRightOf="@+id/start"
-        android:text="Stop" />
-
-    <Button
-        android:id="@+id/view"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_above="@+id/chart"
-        android:layout_alignRight="@+id/bluetoothSearch"
-        android:text="View" />
-
-    <ToggleButton
-        android:id="@+id/record"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@+id/bluetoothSearch"
-        android:layout_toRightOf="@+id/sayBye"
-        android:text="Record"
-        android:textOff="Record"
-        android:textOn="Record" />
 
     <TextView
         android:id="@+id/textView2"
@@ -110,30 +49,51 @@
         android:textSize="20sp" />
 
     <Button
-        android:id="@+id/start"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_above="@+id/chart"
-        android:layout_toRightOf="@+id/record"
-        android:text="Start" />
-
-    <Button
         android:id="@+id/disconnectBTMate"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_alignLeft="@+id/discoverBTMate"
         android:layout_below="@+id/discoverBTMate"
+        android:minWidth="140dp"
         android:text="Disconnect" />
 
-    <ToggleButton
-        android:id="@+id/playPause"
+    <Button
+        android:id="@+id/view"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignBaseline="@+id/disconnectBTMate"
-        android:layout_alignBottom="@+id/disconnectBTMate"
-        android:layout_alignLeft="@+id/sayHello"
-        android:text="ToggleButton"
-        android:textOff="Play"
-        android:textOn="Pause" />
+        android:layout_below="@+id/record"
+        android:layout_marginTop="105dp"
+        android:layout_toLeftOf="@+id/textView1"
+        android:text="View" />
+
+    <Button
+        android:id="@+id/start"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/disconnectBTMate"
+        android:layout_below="@+id/disconnectBTMate"
+        android:minWidth="190dp"
+        android:text="Start" />
+
+    <Button
+        android:id="@+id/stop"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBottom="@+id/record"
+        android:layout_toRightOf="@+id/start"
+        android:minWidth="190dip"
+        android:text="Stop" />
+
+    <ToggleButton
+        android:id="@+id/record"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBottom="@+id/start"
+        android:layout_alignRight="@+id/disconnectBTMate"
+        android:minHeight="48dip"
+        android:minWidth="190dip"
+        android:text="Record"
+        android:textOff="Record"
+        android:textOn="Record" />
 
 </RelativeLayout>

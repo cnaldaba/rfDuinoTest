@@ -79,7 +79,7 @@ public class bleService  extends Service{
 	 
 	 
 	 static LinkedBlockingQueue<Float>  bluetoothQueueForUI = new LinkedBlockingQueue<Float>();
-	 static LinkedBlockingQueue<Float>  bluetoothQueueForSaving = new LinkedBlockingQueue<Float>();
+	static LinkedBlockingQueue<Float>  bluetoothQueueForSaving = new LinkedBlockingQueue<Float>();
 	 //***********************************************
 	 // SERVICE FUNCTIONS
 	 //***********************************************
