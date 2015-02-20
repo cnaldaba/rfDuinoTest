@@ -81,7 +81,7 @@ public class Bluetooth extends Activity {
 	public LinkedBlockingQueue<Float> queue = btMateService.bluetoothMateQueueForUI;
 	public LinkedBlockingQueue<Float> readQueue = readFileClass.readQueueForUI;
 	
-	private float samplingRate = 0.003f; // TODO: Edit this
+	private float samplingRate = 0.003f; 
 	private float currentX;
 	private ChartThread chartThread;
 	
